@@ -45,7 +45,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
       pixel.g = val * 255.f;
       pixel.b = val * 255.f; */
 
-      if(row%2==0 && col%2==0)  // green filter is active/valid
+      if(row%2==1 && col%2==1)  // green filter is active/valid
       {
         pixel.g = val * 255.f;
 
@@ -100,7 +100,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
         pixel.r = totalr/rctr * 255.f;
 
       }  
-      else if(row%2==0)   // meaning red filter is active/valid
+      else if(row%2==0 && col%2==1)   // meaning red filter is active/valid
       {
         pixel.r = val * 255.f;
 
@@ -142,7 +142,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
         pixel.g = totalg/gctr * 255.f;
         pixel.b = totalb/bctr * 255.f;
       }
-      else if(col%2==0)  // meaning blue filter is active/valid
+      else if(col%2==0 && row%2==1)  // meaning blue filter is active/valid
       {
         pixel.b = val * 255.f;
 
