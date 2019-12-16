@@ -24,6 +24,15 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
   // The starter code copies the raw data from the sensor to all rgb
   // channels. This results in a gray image that is just a
   // visualization of the sensor's contents.
+
+  // > The Bayer filter pattern has green at (0,0)
+  // > then alternates R/G along row
+  // > and alternates B/G along column
+
+  // > So positions with green are (2*i, 2*j) and (2*i+1, 2*j+1)
+  // > other places green can be interpolated with the neighbours
+  // > positions with blue are (2*i+1, 2*j) like (1,0), (1,2), etc.
+  // > positions with red are (2*i, 2*j+1) like (0,1), (0,3), etc.
   for (int row = 0; row < height; row++) {
     for (int col = 0; col < width; col++) {
       const auto val = raw_data->data(row, col);
@@ -32,9 +41,203 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
       // pixel data from the sensor is normalized to the 0-1 range, so
       // scale by 255 for the final image output.  Output image pixels
       // should be in the 0-255 range.
-      pixel.r = val * 255.f;
+      /* pixel.r = val * 255.f;
       pixel.g = val * 255.f;
-      pixel.b = val * 255.f;
+      pixel.b = val * 255.f; */
+
+      if(row%2==0 && col%2==0)  // green filter is active/valid
+      {
+        pixel.g = val * 255.f;
+
+        //blue filter is to left and right, if those are valid locs
+        //init counts and total
+        float totalb = 0;
+        int bctr = 0;
+        if(col-1 > 0)
+        {
+          bctr += 1;
+          totalb += raw_data->data(row, col-1);
+          if(row+2 < height)
+          {
+            bctr += 1;
+            totalb+ = raw_data->data(row+2, col-1);
+          }
+        }
+        if(col+1 < width)
+        {
+          bctr += 1;
+          totalb += raw_data->data(row, col+1);
+          if(row+2 < height)
+          {
+            bctr += 1;
+            totalb += raw_data->data(row+2, col+1);
+          }
+        }
+        pixel.b = totalb/bctr * 255.f;
+
+        float totalr = 0;
+        int rctr = 0;
+        if(row-1 > 0)
+        {
+          rctr += 1;
+          totalr += raw_data->data(row-1, col);
+          if(col+2 < width)
+          {
+            rctr += 1;
+            totalr += raw_data->data(row-1, col+2);
+          }
+        }
+        if(row+1 < height)
+        {
+          rctr += 1;
+          totalr += raw_data->data(row+1, col);
+          if(col+2 < width)
+          {
+            rctr += 1;
+            totalr += raw_data->data(row+1, col+2);
+          }
+        }
+        pixel.r = totalr/rctr * 255.f;
+
+      }  
+      else if(row%2==0)   // meaning red filter is active/valid
+      {
+        pixel.r = val * 255.f;
+
+        //calculate g value from left, right, top, bottom if they exist
+        int gctr = 0; int bctr=0;
+        float totalg = 0; int totalb=0;
+        if(row-1 > 0)
+        {
+          gctr+=1; totalg+=raw_data->data(row-1, col);
+          if(col-1 > 0)
+          {
+            bctr+=1; totalb+=raw_data->data(row-1, col-1);
+          }
+          if(col+1 < width)
+          {
+            bctr+=1; totalb+=raw_data->data(row-1, col+1);
+          }
+        }
+        if(row+1 < height)
+        {
+          gctr+=1; totalg+=raw_data->data(row+1, col);
+          if(col-1 > 0)
+          {
+            bctr+=1; totalb+=raw_data->data(row+1, col-1);
+          }
+          if(col+1 < width)
+          {
+            bctr+=1; totalb+=raw_data->data(row+1, col+1);
+          }
+        }
+        if(col-1 > 0)
+        {
+          gctr+=1; totalg+=raw_data->data(row, col-1);
+        }
+        if(col+1 < width)
+        {
+          gctr+=1; totalg+=raw_data->data(row, col+1);
+        }
+        pixel.g = totalg/gctr * 255.f;
+        pixel.b = totalb/bctr * 255.f;
+      }
+      else if(col%2==0)  // meaning blue filter is active/valid
+      {
+        pixel.b = val * 255.f;
+
+        //calculate r and g value from left, right, top, bottom if they exist
+        int gctr = 0; int rctr=0;
+        float totalg = 0; int totalr=0;
+        if(row-1 > 0)
+        {
+          gctr+=1; totalg+=raw_data->data(row-1, col);
+          if(col-1 > 0)
+          {
+            rctr+=1; totalr+=raw_data->data(row-1, col-1);
+          }
+          if(col+1 < width)
+          {
+            rctr+=1; totalr+=raw_data->data(row-1, col+1);
+          }
+        }
+        if(row+1 < height)
+        {
+          gctr+=1; totalg+=raw_data->data(row+1, col);
+          if(col-1 > 0)
+          {
+            rctr+=1; totalr+=raw_data->data(row+1, col-1);
+          }
+          if(col+1 < width)
+          {
+            rctr+=1; totalr+=raw_data->data(row+1, col+1);
+          }
+        }
+        if(col-1 > 0)
+        {
+          gctr+=1; totalg+=raw_data->data(row, col-1);
+        }
+        if(col+1 < width)
+        {
+          gctr+=1; totalg+=raw_data->data(row, col+1);
+        }
+        pixel.g = totalg/gctr * 255.f;
+        pixel.r = totalr/rctr * 255.f;
+      }
+      else  // neither row nor column are divisible by 2 so green active/valid
+      {
+        pixel.g = val * 255.f;
+
+        //red filter is to left and right, if those are valid locs
+        //init counts and total
+        float totalr = 0;
+        int rctr = 0;
+        if(col-1 > 0)
+        {
+          rctr += 1;
+          totalr += raw_data->data(row, col-1);
+          if(row+2 < height)
+          {
+            rctr += 1;
+            totalr+ = raw_data->data(row+2, col-1);
+          }
+        }
+        if(col+1 < width)
+        {
+          rctr += 1;
+          totalr += raw_data->data(row, col+1);
+          if(row+2 < height)
+          {
+            rctr += 1;
+            totalr += raw_data->data(row+2, col+1);
+          }
+        }
+        pixel.r = totalr/bctr * 255.f;
+
+        float totalb = 0;
+        int bctr = 0;
+        if(row-1 > 0)
+        {
+          bctr += 1;
+          totalb += raw_data->data(row-1, col);
+          if(col+2 < width)
+          {
+            bctr += 1;
+            totalb += raw_data->data(row-1, col+2);
+          }
+        }
+        if(row+1 < height)
+        {
+          bctr += 1;
+          totalb += raw_data->data(row+1, col);
+          if(col+2 < width)
+          {
+            bctr += 1;
+            totalb += raw_data->data(row+1, col+2);
+          }
+        }
+        pixel.b = totalb/bctr * 255.f;
+      }
     }
   }
   
