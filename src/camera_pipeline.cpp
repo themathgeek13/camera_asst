@@ -60,7 +60,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
           if(row+2 < height)
           {
             bctr += 1;
-            totalb+ = raw_data->data(row+2, col-1);
+            totalb += raw_data->data(row+2, col-1);
           }
         }
         if(col+1 < width)
@@ -199,7 +199,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
           if(row+2 < height)
           {
             rctr += 1;
-            totalr+ = raw_data->data(row+2, col-1);
+            totalr += raw_data->data(row+2, col-1);
           }
         }
         if(col+1 < width)
@@ -212,7 +212,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
             totalr += raw_data->data(row+2, col+1);
           }
         }
-        pixel.r = totalr/bctr * 255.f;
+        pixel.r = totalr/rctr * 255.f;
 
         float totalb = 0;
         int bctr = 0;
