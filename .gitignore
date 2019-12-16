@@ -1,0 +1,7 @@
+*.tgz
+*.bin
+*.exr
+*.bmp
+*.o
+build/*
+bin/*
