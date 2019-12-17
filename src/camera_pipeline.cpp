@@ -25,6 +25,9 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
     
   // allocate 3-channel RGB output buffer to hold the results after processing 
   std::unique_ptr<Image<RgbPixel>> image(new Image<RgbPixel>(width, height));
+
+  // allocate 3-channel YUV output buffer to hold the results after processing 
+  std::unique_ptr<Image<YuvPixel>> yuvimage(new Image<YuvPixel>(width, height));
   
   // The starter code copies the raw data from the sensor to all rgb
   // channels. This results in a gray image that is just a
@@ -245,9 +248,18 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
       }
     }
   }
+
+  // Get the YUV image and blur the U/V channels (luminance and chrominance)
+  for (int row = 0; row < height; row++) {
+    for (int col = 0; col < width; col++) {
+      auto& rgbpixel = (*image)(row, col);
+      auto& yuvpixel = (*yuvimage)(row,col);
+      yuvpixel = rgbpixel.RgbToYuv(rgbpixel);
+    }
+  }
   
   // return processed image output
-  return image;
+  return yuvimage;
 
   // END: CS348K STUDENTS MODIFY THIS CODE  
 }
