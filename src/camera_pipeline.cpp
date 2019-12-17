@@ -249,7 +249,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
     }
   }
 
-  // Get the YUV image and blur the U/V channels (luminance and chrominance)
+  // Get the YUV image from demosaicked image
   for (int row = 0; row < height; row++) {
     for (int col = 0; col < width; col++) {
       auto& rgbpixel = (*image)(row, col);
@@ -257,9 +257,36 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
       yuvpixel = rgbpixel.RgbToYuv(rgbpixel);
     }
   }
+
+  // Blur the U/V channels (luminance and chrominance)
+  for (int row = 0; row < height; row+=2) {
+    for (int col = 0; col < width; col+=2) {
+      auto& yuvpixel1 = (*yuvimage)(row,col);
+      auto& yuvpixel2 = (*yuvimage)(row+1,col);
+      auto& yuvpixel3 = (*yuvimage)(row,col+1);
+      auto& yuvpixel4 = (*yuvimage)(row+1,col+1);
+
+      float meanU = (yuvpixel1.u + yuvpixel2.u + yuvpixel3.u + yuvpixel4.u)/4;
+      float meanV = (yuvpixel1.v + yuvpixel2.v + yuvpixel3.v + yuvpixel4.v)/4;
+
+      yuvpixel1.u = meanU; yuvpixel1.v = meanV;
+      yuvpixel2.u = meanU; yuvpixel2.v = meanV;
+      yuvpixel3.u = meanU; yuvpixel3.v = meanV;
+      yuvpixel4.u = meanU; yuvpixel4.v = meanV;
+    }
+  }
+
+  // Convert YUV image back to RGB 
+  for (int row = 0; row < height; row++) {
+    for (int col = 0; col < width; col++) {
+      auto& rgbpixel = (*image)(row, col);
+      auto& yuvpixel = (*yuvimage)(row,col);
+      rgbpixel = yuvpixel.YuvToRgb(yuvpixel);
+    }
+  }
   
   // return processed image output
-  return yuvimage;
+  return image;
 
   // END: CS348K STUDENTS MODIFY THIS CODE  
 }
