@@ -298,15 +298,6 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
     }
   }
 
-  // Convert YUV image back to RGB 
-  for (int row = 0; row < height; row++) {
-    for (int col = 0; col < width; col++) {
-      auto& rgbpixel = (*image)(row, col);
-      auto& yuvpixel = (*yuvimage)(row,col);
-      rgbpixel = yuvpixel.YuvToRgb(yuvpixel);
-    }
-  }
-
   int redwindow[9], greenwindow[9], bluewindow[9];
   int r,g,b, count;
 
@@ -315,25 +306,34 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
   {
     for (int col = 1; col < width-1; col++)
     {
-      auto& current_pixel = (*image)(row,col);
+      auto& current_pixel = (*yuvimage)(row,col);
       count=0;
       for(int x = -1; x < 2; ++x)
       {
         for(int y = -1; y < 2; ++y)
         {
-          auto &wpixel = (*image)(row+x,col+y);
-          redwindow[count] = wpixel.r;
-          greenwindow[count] = wpixel.g;
-          bluewindow[count] = wpixel.b;
+          auto &wpixel = (*yuvimage)(row+x,col+y);
+          redwindow[count] = wpixel.y;
+          greenwindow[count] = wpixel.u;
+          bluewindow[count] = wpixel.v;
           count++;
         }
       }
       insertionSort(redwindow, 9);
       insertionSort(bluewindow, 9);
       insertionSort(greenwindow, 9);
-      current_pixel.r = redwindow[4];
-      current_pixel.g = greenwindow[4];
-      current_pixel.b = bluewindow[4];
+      current_pixel.y = redwindow[4];
+      current_pixel.u = greenwindow[4];
+      current_pixel.v = bluewindow[4];
+    }
+  }
+
+  // Convert YUV image back to RGB 
+  for (int row = 0; row < height; row++) {
+    for (int col = 0; col < width; col++) {
+      auto& rgbpixel = (*image)(row, col);
+      auto& yuvpixel = (*yuvimage)(row,col);
+      rgbpixel = yuvpixel.YuvToRgb(yuvpixel);
     }
   }
   
