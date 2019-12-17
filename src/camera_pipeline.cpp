@@ -62,8 +62,8 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
   // > other places green can be interpolated with the neighbours
   // > positions with blue are (2*i+1, 2*j) like (1,0), (1,2), etc.
   // > positions with red are (2*i, 2*j+1) like (0,1), (0,3), etc.
-  for (int row = 0; row < height; row++) {
-    for (int col = 0; col < width; col++) {
+  for (int row = 1; row < height-2; row++) {
+    for (int col = 1; col < width-2; col++) {
       const auto val = raw_data->data(row, col) - raw_data_dark->data(row, col);
       auto& pixel = (*image)(row, col);
 
@@ -73,199 +73,47 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
       /* pixel.r = val * 255.f;
       pixel.g = val * 255.f;
       pixel.b = val * 255.f; */
-
+      auto pos0 = raw_data->data(row-1, col-1)-raw_data_dark->data(row-1, col-1);
+      auto pos1 = raw_data->data(row-1, col)-raw_data_dark->data(row-1, col);
+      auto pos2 = raw_data->data(row-1, col+1)-raw_data_dark->data(row-1, col+1);
+      auto pos3 = raw_data->data(row, col-1)-raw_data_dark->data(row, col-1);
+      auto pos4 = raw_data->data(row, col)-raw_data_dark->data(row, col);
+      auto pos5 = raw_data->data(row, col+1)-raw_data_dark->data(row, col+1);
+      auto pos6 = raw_data->data(row+1, col-1)-raw_data_dark->data(row+1, col-1);
+      auto pos7 = raw_data->data(row+1, col)-raw_data_dark->data(row+1, col);
+      auto pos8 = raw_data->data(row+1, col+1)-raw_data_dark->data(row+1, col+1);
+      auto pos9 = raw_data->data(row+2, col-1)-raw_data_dark->data(row+2, col-1);
+      auto pos10 = raw_data->data(row+2, col)-raw_data_dark->data(row+2, col);
+      auto pos11 = raw_data->data(row+2, col+1)-raw_data_dark->data(row+2, col+1);
+      auto lcol2 = raw_data->data(row-1, col+2)-raw_data_dark->data(row-1, col+2);
+      auto rcol2 = raw_data->data(row+1, col+2)-raw_data_dark->data(row+1, col+2);
       if(row%2==1 && col%2==1)  // green filter is active/valid
       {
         pixel.g += val * 255.f;
-
-        //blue filter is to left and right, if those are valid locs
-        //init counts and total
-        float totalb = 0;
-        int bctr = 0;
-        if(col-1 > 0)
-        {
-          bctr += 1;
-          totalb += raw_data->data(row, col-1)-raw_data_dark->data(row, col-1);
-          if(row+2 < height)
-          {
-            bctr += 1;
-            totalb += raw_data->data(row+2, col-1)-raw_data_dark->data(row+2, col-1);
-          }
-        }
-        if(col+1 < width)
-        {
-          bctr += 1;
-          totalb += raw_data->data(row, col+1)-raw_data_dark->data(row, col+1);
-          if(row+2 < height)
-          {
-            bctr += 1;
-            totalb += raw_data->data(row+2, col+1)-raw_data_dark->data(row+2, col+1);
-          }
-        }
-        pixel.b += totalb/bctr * 255.f;
-
-        float totalr = 0;
-        int rctr = 0;
-        if(row-1 > 0)
-        {
-          rctr += 1;
-          totalr += raw_data->data(row-1, col)-raw_data_dark->data(row-1, col);
-          if(col+2 < width)
-          {
-            rctr += 1;
-            totalr += raw_data->data(row-1, col+2)-raw_data_dark->data(row-1, col+2);
-          }
-        }
-        if(row+1 < height)
-        {
-          rctr += 1;
-          totalr += raw_data->data(row+1, col)-raw_data_dark->data(row+1, col);
-          if(col+2 < width)
-          {
-            rctr += 1;
-            totalr += raw_data->data(row+1, col+2)-raw_data_dark->data(row+1, col+2);
-          }
-        }
-        pixel.r += totalr/rctr * 255.f;
-
+        //calculate r and b values from left, right, top and bottom
+        pixel.b = (pos3+pos9+pos5+pos11)/4 * 255.f;
+        pixel.r = (pos1+lcol2+rcol2+pos7)/4 * 255.f;
       }  
       else if(row%2==0 && col%2==1)   // meaning red filter is active/valid
       {
         pixel.r += val * 255.f;
-
         //calculate g value from left, right, top, bottom if they exist
-        int gctr = 0; int bctr=0;
-        float totalg = 0; int totalb=0;
-        if(row-1 > 0)
-        {
-          gctr+=1; totalg+=raw_data->data(row-1, col)-raw_data_dark->data(row-1, col);
-          if(col-1 > 0)
-          {
-            bctr+=1; totalb+=raw_data->data(row-1, col-1)-raw_data_dark->data(row-1, col-1);
-          }
-          if(col+1 < width)
-          {
-            bctr+=1; totalb+=raw_data->data(row-1, col+1)-raw_data_dark->data(row-1, col+1);
-          }
-        }
-        if(row+1 < height)
-        {
-          gctr+=1; totalg+=raw_data->data(row+1, col)-raw_data_dark->data(row+1, col);
-          if(col-1 > 0)
-          {
-            bctr+=1; totalb+=raw_data->data(row+1, col-1)-raw_data_dark->data(row+1, col-1);
-          }
-          if(col+1 < width)
-          {
-            bctr+=1; totalb+=raw_data->data(row+1, col+1)-raw_data_dark->data(row+1, col+1);
-          }
-        }
-        if(col-1 > 0)
-        {
-          gctr+=1; totalg+=raw_data->data(row, col-1)-raw_data_dark->data(row, col-1);
-        }
-        if(col+1 < width)
-        {
-          gctr+=1; totalg+=raw_data->data(row, col+1)-raw_data_dark->data(row, col+1);
-        }
-        pixel.g += totalg/gctr * 255.f;
-        pixel.b += totalb/bctr * 255.f;
+        pixel.g = (pos1+pos3+pos5+pos7)/4 * 255.f;
+        pixel.b = (pos0+pos2+pos6+pos8)/4 * 255.f;
       }
       else if(col%2==0 && row%2==1)  // meaning blue filter is active/valid
       {
         pixel.b += val * 255.f;
-
         //calculate r and g value from left, right, top, bottom if they exist
-        int gctr = 0; int rctr=0;
-        float totalg = 0; int totalr=0;
-        if(row-1 > 0)
-        {
-          gctr+=1; totalg+=raw_data->data(row-1, col)-raw_data_dark->data(row-1, col);
-          if(col-1 > 0)
-          {
-            rctr+=1; totalr+=raw_data->data(row-1, col-1)-raw_data_dark->data(row-1, col-1);
-          }
-          if(col+1 < width)
-          {
-            rctr+=1; totalr+=raw_data->data(row-1, col+1)-raw_data_dark->data(row-1, col+1);
-          }
-        }
-        if(row+1 < height)
-        {
-          gctr+=1; totalg+=raw_data->data(row+1, col)-raw_data_dark->data(row+1, col);
-          if(col-1 > 0)
-          {
-            rctr+=1; totalr+=raw_data->data(row+1, col-1)-raw_data_dark->data(row+1, col-1);
-          }
-          if(col+1 < width)
-          {
-            rctr+=1; totalr+=raw_data->data(row+1, col+1)-raw_data_dark->data(row+1, col+1);
-          }
-        }
-        if(col-1 > 0)
-        {
-          gctr+=1; totalg+=raw_data->data(row, col-1)-raw_data_dark->data(row, col-1);
-        }
-        if(col+1 < width)
-        {
-          gctr+=1; totalg+=raw_data->data(row, col+1)-raw_data_dark->data(row, col+1);
-        }
-        pixel.g += totalg/gctr * 255.f;
-        pixel.r += totalr/rctr * 255.f;
+        pixel.g = (pos1+pos3+pos5+pos7)/4 * 255.f;
+        pixel.r = (pos0+pos2+pos6+pos8)/4 * 255.f;
       }
       else  // neither row nor column are divisible by 2 so green active/valid
       {
         pixel.g += val * 255.f;
-
         //red filter is to left and right, if those are valid locs
-        //init counts and total
-        float totalr = 0;
-        int rctr = 0;
-        if(col-1 > 0)
-        {
-          rctr += 1;
-          totalr += raw_data->data(row, col-1)-raw_data_dark->data(row, col-1);
-          if(row+2 < height)
-          {
-            rctr += 1;
-            totalr += raw_data->data(row+2, col-1)-raw_data_dark->data(row+2, col-1);
-          }
-        }
-        if(col+1 < width)
-        {
-          rctr += 1;
-          totalr += raw_data->data(row, col+1)-raw_data_dark->data(row, col+1);
-          if(row+2 < height)
-          {
-            rctr += 1;
-            totalr += raw_data->data(row+2, col+1)-raw_data_dark->data(row+2, col+1);
-          }
-        }
-        pixel.r += totalr/rctr * 255.f;
-
-        float totalb = 0;
-        int bctr = 0;
-        if(row-1 > 0)
-        {
-          bctr += 1;
-          totalb += raw_data->data(row-1, col)-raw_data_dark->data(row-1, col);
-          if(col+2 < width)
-          {
-            bctr += 1;
-            totalb += raw_data->data(row-1, col+2)-raw_data_dark->data(row-1, col+2);
-          }
-        }
-        if(row+1 < height)
-        {
-          bctr += 1;
-          totalb += raw_data->data(row+1, col)-raw_data_dark->data(row+1, col);
-          if(col+2 < width)
-          {
-            bctr += 1;
-            totalb += raw_data->data(row+1, col+2)-raw_data_dark->data(row+1, col+2);
-          }
-        }
-        pixel.b += totalb/bctr * 255.f;
+        pixel.r = (pos3+pos9+pos5+pos11)/4 *255.f;
+        pixel.b = (pos1+lcol2+rcol2+pos7)/4 * 255.f;
       }
     }
   }
@@ -297,7 +145,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
       yuvpixel4.u = meanU; yuvpixel4.v = meanV;
     }
   }
-
+  
   int redwindow[9], greenwindow[9], bluewindow[9];
   int r,g,b, count;
 
@@ -327,7 +175,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
       current_pixel.v = bluewindow[4];
     }
   }
-
+  
   // Convert YUV image back to RGB 
   for (int row = 0; row < height; row++) {
     for (int col = 0; col < width; col++) {
