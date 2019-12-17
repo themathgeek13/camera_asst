@@ -1,5 +1,26 @@
 #include "camera_pipeline.hpp"
 
+/* Function to sort an array using insertion sort*/
+void insertionSort(int arr[], int n) 
+{ 
+    int i, key, j; 
+    for (i = 1; i < n; i++) 
+    { 
+        key = arr[i]; 
+        j = i - 1; 
+  
+        /* Move elements of arr[0..i-1], that are 
+        greater than key, to one position ahead 
+        of their current position */
+        while (j >= 0 && arr[j] > key) 
+        { 
+            arr[j + 1] = arr[j]; 
+            j = j - 1; 
+        } 
+        arr[j + 1] = key; 
+    } 
+} 
+
 std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
     
   // BEGIN: CS348K STUDENTS MODIFY THIS CODE
@@ -249,6 +270,7 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
     }
   }
 
+
   // Get the YUV image from demosaicked image
   for (int row = 0; row < height; row++) {
     for (int col = 0; col < width; col++) {
@@ -282,6 +304,36 @@ std::unique_ptr<Image<RgbPixel>> CameraPipeline::ProcessShot() const {
       auto& rgbpixel = (*image)(row, col);
       auto& yuvpixel = (*yuvimage)(row,col);
       rgbpixel = yuvpixel.YuvToRgb(yuvpixel);
+    }
+  }
+
+  int redwindow[9], greenwindow[9], bluewindow[9];
+  int r,g,b, count;
+
+  // Do median filtering for denoising
+  for (int row = 1; row < height-1; row++)
+  {
+    for (int col = 1; col < width-1; col++)
+    {
+      auto& current_pixel = (*image)(row,col);
+      count=0;
+      for(int x = -1; x < 2; ++x)
+      {
+        for(int y = -1; y < 2; ++y)
+        {
+          auto &wpixel = (*image)(row+x,col+y);
+          redwindow[count] = wpixel.r;
+          greenwindow[count] = wpixel.g;
+          bluewindow[count] = wpixel.b;
+          count++;
+        }
+      }
+      insertionSort(redwindow, 9);
+      insertionSort(bluewindow, 9);
+      insertionSort(greenwindow, 9);
+      current_pixel.r = redwindow[4];
+      current_pixel.g = greenwindow[4];
+      current_pixel.b = bluewindow[4];
     }
   }
   
